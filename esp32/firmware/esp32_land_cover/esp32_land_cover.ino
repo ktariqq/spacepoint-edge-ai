@@ -85,43 +85,31 @@ void setup() {
 }
 
 
-void classifyAndShow(const int8_t* imageData, const char* label) {
+void classifyAndShow(const float* imageData, const char* label) {
 
   Serial.println();
   Serial.print("Classifying: ");
   Serial.println(label);
 
-  /*
-    Your test image contains 6912 int8 values.
-
-    We set each value into the model input tensor.
-    If the model has a different input size, ModelSetInput()
-    will reveal the issue through the library's error handling.
-  */
-
   for (int i = 0; i < 6912; i++) {
-
-    if (!ModelSetInput((float)imageData[i], i, true)) {
+    // imageData[i] is already the real [0,1] pixel value - MicroTFLite
+    // quantizes it internally using the model's own scale/zero-point.
+    if (!ModelSetInput(imageData[i], i, true)) {
       Serial.print("Failed to set input at index ");
       Serial.println(i);
       return;
     }
   }
 
-  // Run inference
   if (!ModelRunInference()) {
     Serial.println("Inference failed!");
     return;
   }
 
-  // Find class with highest output
   int bestIndex = 0;
   float bestScore = ModelGetOutput(0);
-
   for (int i = 1; i < NUM_CLASSES; i++) {
-
     float score = ModelGetOutput(i);
-
     if (score > bestScore) {
       bestScore = score;
       bestIndex = i;
@@ -130,26 +118,19 @@ void classifyAndShow(const int8_t* imageData, const char* label) {
 
   Serial.print("Predicted: ");
   Serial.println(CLASS_NAMES[bestIndex]);
-
   Serial.print("Score: ");
-  Serial.println(bestScore);
+  Serial.println(bestScore, 3);
 
-  // OLED
   display.clearDisplay();
-
   display.setTextSize(1);
   display.setCursor(0, 0);
   display.println(label);
-
   display.println();
-
   display.setTextSize(2);
   display.println(CLASS_NAMES[bestIndex]);
-
   display.setTextSize(1);
   display.print("Score: ");
   display.println(bestScore, 3);
-
   display.display();
 }
 
